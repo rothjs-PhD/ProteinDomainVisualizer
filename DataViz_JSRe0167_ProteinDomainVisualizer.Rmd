@@ -1,0 +1,299 @@
+---
+title: "JSRe0167_ProteinDomains"
+author: "Jacob Roth"
+date: "2024-05-06"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+```{r}
+library(ggplot2)
+library(plyr)
+
+
+df_protein <- readxl::read_excel("2-data_raw/ProteinDomains.xlsx",
+                           sheet = 1)
+
+# Example dataframe
+# df_protein <- data.frame(
+#   name = c("Protein1", "Protein1", "Protein1", "Protein2"),
+#   type = c("Domain A", "Domain B", "length", "length"),
+#   start = c(1, 20, 1, 1),
+#   end = c(15, 28, 500, 150),
+#   rank = c(1, 1, 1, 2) # Assume rank indicates the order in which proteins should be displayed
+# 
+# )
+df_protein$start <- as.numeric(df_protein$start)
+df_protein$end <- as.numeric(df_protein$end)
+
+# Define x-axis limits based on the data range or specific interest
+x_min <- round_any(min(df_protein$start) - 10, 50, f = ceiling) # Extend a bit beyond the minimum start value
+x_max <- round_any(max(df_protein$end) + 10, 50, f = ceiling) # Extend a bit beyond the maximum end value
+
+```
+
+```{r}
+
+```
+
+
+```{r}
+# Assuming df_protein is already defined and includes "length" rows for each protein
+
+# Plotting the domains
+g <- ggplot(df_protein) +
+  geom_segment(data = df_protein %>% filter(type == "length"), aes(x = start, xend = end, y = name, yend = name), size = 1, color = "black") +
+  geom_segment(data = df_protein %>% filter(type != "length"), aes(x = start, xend = end, y = name, yend = name, color = type), size = 5) +
+  scale_color_brewer(palette = "Set1") +
+  # coord_flip() +
+  labs(x = "Amino Acid Position", title = "Protein Domains Visualization", color = "Domain Type") +
+  theme_minimal() +
+  theme(panel.grid.major.y = element_blank(), 
+        panel.grid.minor.y = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10),
+        axis.text.y = element_text(size = 12))
+  # scale_x_continuous(limits = c(x_min, x_max), breaks = seq(x_min, x_max, by = 20))
+
+# Display the plot
+print(g)
+
+```
+
+```{r, eval = F}
+# unique(df_protein$type)
+
+colors_JSRe0150 <- c("#636363", #"length"
+                     "#fa9fb5", #"WD-repeat"
+                     # "#404040", #"Replaced with G4S"
+                     # "#80cdc1", #"Tag_GST"
+                     "#018571" #"Tag_MBP"
+                     )
+
+colors_JSRe0167 <- c("length" = "#636363",
+                     # "WD-repeat" = "#fa9fb5",
+                     "Acetylation" = "#d8b365",
+                     "Methylation" = "#404040",
+                     "Ubiquitinylation" = "#c7eae5",
+                     "Phosphorylation" = "#000000",
+                     "Sumoylation" = "#01665e"
+                     )
+
+
+pie(rep(1,6), col=colors_JSRe0167)
+
+types <- unique(df_protein$type)
+color_set = setNames(colors_JSRe0150,
+                            types)
+
+```
+```{r E2F1 colors, eval = F}
+# unique(df_protein$type)
+
+types_E2F1 <- df_protein %>%
+  filter(name == "E2F1") %>%
+  filter(plot == "y") %>%
+  pull(label3) %>%
+  unique()%>%
+  na.omit() # Removes NA values
+types_E2F1
+
+colors_E2F1 <- c("length" = "#000000",
+                     # "WD-repeat" = "#fa9fb5",
+                     "Acetylation" = "cyan3",
+                     "Methylation" = "magenta",
+                     "Ubiquitinylation" = "#000000",
+                     "Phosphorylation" = "#000000",
+                     "CyclinA-CDK2 binding" = "lightseagreen",
+                     "Leucine-Zipper" = "#d8b365",
+                 "Dimerization" = "#01665e",
+                 "Transactivation" = "gray75",
+                 "RB1 binding" = "gray65"
+                 )
+
+
+# pie(rep(1,10), col=colors_E2F1)
+
+# color_E2F1 = setNames(colors_E2F1,
+#                             types_E2F1)
+# color_E2F1
+
+```
+
+
+```{r E2F1}
+library(ggrepel)
+library(tidyverse)
+df_protein <- df_protein %>%
+  filter(name == "E2F1")
+
+df_protein$label3 <- factor(df_protein$label3,
+                            levels = c("Methylation",
+                                       "Acetylation",
+                                       "Phosphorylation",
+                                       "Ubiquitinylation",
+                                       "Leucine-Zipper",
+                                       "Dimerization",
+                                      "CyclinA-CDK2 binding",
+                                      "Transactivation",
+                                      "RB1 binding"
+                                      ))
+
+
+g <- df_protein %>%
+ggplot() +
+  geom_text_repel(data = df_protein %>% filter(plot == "y" 
+                                               # & label == "Methylation" 
+                                               & label_start_top == "y"), 
+                  aes(x = start, y = name, label = residue, color = label3),
+                  nudge_x = 0, nudge_y = 0.25,
+                  # direction = "y", 
+                  size = 3,
+                  # fill = alpha(c("white"),0.9),
+                  fill = "white",
+                  fontface = 'bold',
+                  max.overlaps = 10,    # Control maximum number of overlaps allowed
+                  box.padding = 0.75,    # Padding around text box
+                  segment.color = 'grey50', # Line color from label to point
+                  point.padding = 0.3  # Padding between points and text
+                  ) +
+  # geom_text_repel(data = df_protein %>% filter(plot == "y" & label_end_top == "y"), aes(x = end, y = name, label = end),
+  #                 nudge_x = 0, nudge_y = 0.3, direction = "y", size = 3) +
+  geom_text_repel(data = df_protein %>% filter(plot == "y" & label_start_bot == "y"), 
+                  aes(x = start, y = name, label = residue, color = label3),
+                  nudge_x = 0, nudge_y = -0.25,
+                  # direction = "y", 
+                  size = 3,
+                  fontface = 'bold',
+                  # fill = alpha(c("blue"),0.5),
+                  # alpha = 0.1,
+                  fill = "white",       # Set background color of label box
+                  max.overlaps = 10,    # Control maximum number of overlaps allowed
+                  box.padding = 0.5,    # Padding around text box
+                  segment.color = 'grey50', # Line color from label to point
+                  point.padding = 0.3  # Padding between points and text
+                  ) +
+  geom_segment(data = df_protein %>% filter(plot == "y" & type == "length"), aes(x = start, xend = end, y = name, yend = name), size = 1, color = "black") +
+  geom_segment(data = df_protein %>% filter(plot == "y" & type == "Domain"), 
+               aes(x = start, xend = end, y = name, yend = name, color = label), 
+               size = 5) +
+  # geom_text_repel(data = df_protein %>% filter(plot == "y" & label_end_bot == "y"), aes(x = end, y = name, label = end),
+  #                 nudge_x = 0, nudge_y = -0.3, direction = "y", size = 3) +
+  # scale_color_brewer(palette = "Set1") +
+    scale_color_manual(values = colors_E2F1,
+                      breaks=c("Methylation",
+                                       "Acetylation",
+                                       "Phosphorylation",
+                                       "Ubiquitinylation",
+                                       "Leucine-Zipper",
+                                       # "Dimerization",
+                                      # "CyclinA-CDK2 binding",
+                                      # "Transactivation",
+                                      "RB1 binding")) +
+  # geom_label_repel(data = df_protein %>% filter(!is.na(label)), aes(x = (start + end) / 2, y = name, label = label), 
+  #                  nudge_x = 0, nudge_y = 0.2, size = 4, segment.color = "grey50") +
+  # coord_flip() +
+  labs(x = "Amino Acid Position", 
+       y = "", 
+       title = "Visualization of E2F1 PTMs", color = "Modification") +
+  theme_minimal() +
+  theme(panel.grid.major.y = element_blank(), 
+        panel.grid.minor.y = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10),
+        axis.text.y = element_text(size = 12),
+        # axis.text.x=element_blank(),
+        legend.position="bottom"
+        # ,legend.direction="vertical"
+        ) +
+  scale_x_continuous(breaks = seq(x_min, x_max, by = 50), labels = seq(x_min, x_max, by = 50)) # Adjusted for y-axis due to coord_flip
+  # scale_x_continuous(breaks = function(x) ifelse(x == 0, 0, NA), labels = function(x) ifelse(x == 0, "0", ""))
+    # scale_y_discrete(limits=rev)
+
+# Display the plot
+print(g)
+ggsave("5-figures/20240905_E2F1-ProteinDomains3.png", plot = g, width = 10, height = 5, dpi = 300)
+
+```
+
+
+```{r SRSF3 colors, eval = F}
+# unique(df_protein$type)
+
+colors_JSRe0150 <- c("#636363", #"length"
+                     "#fa9fb5", #"WD-repeat"
+                     # "#404040", #"Replaced with G4S"
+                     # "#80cdc1", #"Tag_GST"
+                     "#018571" #"Tag_MBP"
+                     )
+
+colors_JSRe0167 <- c("length" = "#636363",
+                     # "WD-repeat" = "#fa9fb5",
+                     "Acetylation" = "#d8b365",
+                     "Methylation" = "#404040",
+                     "Ubiquitinylation" = "#c7eae5",
+                     "Phosphorylation" = "#000000",
+                     "Sumoylation" = "#01665e"
+                     )
+
+
+pie(rep(1,6), col=colors_JSRe0167)
+
+types <- unique(df_protein$type)
+color_set = setNames(colors_JSRe0150,
+                            types)
+
+```
+
+```{r SRSF3, eval = FALSE}
+library(ggrepel)
+library(tidyverse)
+g <- df_protein %>%
+ggplot() +
+  geom_text_repel(data = df_protein %>% filter(plot == "y" & label == "Methylation" & label_start_top == "y"), aes(x = start, y = name, label = start),
+                  nudge_x = 0, nudge_y = 0.15, direction = "y", size = 3) +
+  # geom_text_repel(data = df_protein %>% filter(plot == "y" & label_end_top == "y"), aes(x = end, y = name, label = end),
+  #                 nudge_x = 0, nudge_y = 0.3, direction = "y", size = 3) +
+  geom_text_repel(data = df_protein %>% filter(plot == "y" & label_start_bot == "y"), aes(x = start, y = name, label = start, color = label),
+                  nudge_x = 0, nudge_y = -0.15, direction = "y", size = 3) +
+  # geom_text_repel(data = df_protein %>% filter(plot == "y" & label_end_bot == "y"), aes(x = end, y = name, label = end),
+  #                 nudge_x = 0, nudge_y = -0.3, direction = "y", size = 3) +
+  # scale_color_brewer(palette = "Set1") +
+    scale_color_manual(values = colors_JSRe0167) +
+  # geom_label_repel(data = df_protein %>% filter(!is.na(label)), aes(x = (start + end) / 2, y = name, label = label), 
+  #                  nudge_x = 0, nudge_y = 0.2, size = 4, segment.color = "grey50") +
+  # coord_flip() +
+  geom_segment(data = df_protein %>% filter(plot == "y" & type == "length"), aes(x = start, xend = end, y = name, yend = name), size = 1, color = "black") +
+  geom_segment(data = df_protein %>% filter(plot == "y" & type == "Domain"), aes(x = start, xend = end, y = name, yend = name, color = label), size = 5) +
+  labs(x = "Amino Acid Position", 
+       y = "", 
+       title = "Visualization of SRSF3 PTMs", color = "Modification") +
+  theme_minimal() +
+  theme(panel.grid.major.y = element_blank(), 
+        panel.grid.minor.y = element_blank(),
+        legend.title = element_text(size = 12),
+        legend.text = element_text(size = 10),
+        axis.text.y = element_text(size = 12),
+        # axis.text.x=element_blank(),
+        legend.position="bottom"
+        # ,legend.direction="vertical"
+        ) +
+  scale_x_continuous(breaks = seq(x_min, x_max, by = 50), labels = seq(x_min, x_max, by = 50)) # Adjusted for y-axis due to coord_flip
+  # scale_x_continuous(breaks = function(x) ifelse(x == 0, 0, NA), labels = function(x) ifelse(x == 0, "0", ""))
+    # scale_y_discrete(limits=rev)
+
+# Display the plot
+print(g)
+ggsave("5-figures/20240506_SRSF3-ProteinDomains-Mods_visualization.png", plot = g, width = 10, height = 5, dpi = 300)
+
+```
+
+```{r}
+
+```
+
